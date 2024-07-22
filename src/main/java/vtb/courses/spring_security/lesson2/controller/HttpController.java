@@ -10,13 +10,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.io.IOException;
 
@@ -37,17 +35,14 @@ public class HttpController implements ErrorController {
 	@PreAuthorize("hasRole('PERMISSION_ROUTE1')")
 	@GetMapping("/route1")
 	public String route1(Model model) {
+		// Вернём в страницу имя текущего пользователя
 		model.addAttribute("name", SecurityContextHolder.getContext().getAuthentication().getName());
 		return "route1";
 	}
-	@RequestMapping("/error")
-	public void handleError(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		response.sendRedirect("AccessDenied.html");
-	}
-
 	@PreAuthorize("hasRole('PERMISSION_ROUTE2')")
 	@GetMapping("/route2")
 	public String route2(Model model) {
+		// Вернём в страницу имя текущего пользователя
 		model.addAttribute("name", SecurityContextHolder.getContext().getAuthentication().getName());
 		return "route2";
 	}
@@ -56,8 +51,10 @@ public class HttpController implements ErrorController {
 	@GetMapping("/create_user")
 	public String createUser(Model model) {
 		if (userManager.userExists("Joe")) {
+			// Если такой польватель уже имеется проинформируем об этом на странице
 			model.addAttribute("user_status", " already exists!");
 		} else {
+			// Пользователя ещё нет, создаем через UserDetailsManager, устанавливаем временный пароль
 			String tempPassword = String.valueOf((int) (Math.random() * 899 + 100));
 			UserDetails user = User.builder()
 					.username("Joe")

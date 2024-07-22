@@ -10,25 +10,24 @@ import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.firewall.RequestRejectedException;
-import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.io.IOException;
 
+/**
+ * SecuritySettings - полная конфигурация системы доступа
+ */
 @Component
 public class SecuritySettings {
     @Autowired
     private DataSource usersDataSource;
-
-    private JdbcUserDetailsManager userManager;
 
     private static void  handleException(HttpServletRequest request, HttpServletResponse response, RequestRejectedException requestRejectedException) throws IOException, ServletException {
         System.out.println("Exception: " + requestRejectedException);
@@ -42,21 +41,19 @@ public class SecuritySettings {
                 ;
     }
 
-//    @Bean @Order(1)
-//    SecurityFilterChain logoutAccess(HttpSecurity http) throws Exception{
-//        return http
-//                .formLogin(c -> c.defaultSuccessUrl("/", true))
-//                .authorizeHttpRequests((authorize) -> authorize
-//                        .requestMatchers("/logout").permitAll())
-//                .build()
-//                ;
-//    }
-
+    /**
+     * Инициализирует поведение Spring Security
+     *      Всем пользователям - разрешает завершать сессию
+     *      Устанавливает начальную страницу, при успешном логине
+     *      Требует авторизации для доступа к любой странице
+     *      Разрешается сохранять сессию пользователя на его устройстве доступа
+     *      Устанавливаем свою страницу для ошибки доступа 403
+     */
     @Bean @Order(1)
     SecurityFilterChain filterChainAuthenticatedAccessOnly(HttpSecurity http) throws Exception{
 
         return http
-                .logout(c -> c.permitAll())
+                .logout(LogoutConfigurer::permitAll)
                 .formLogin(c -> c.defaultSuccessUrl("/", true))
                 .authorizeHttpRequests(c -> c
                         .anyRequest().authenticated()
@@ -68,9 +65,13 @@ public class SecuritySettings {
                             httpSecurityRememberMeConfigurer.key("RememberMeTestKey");
                         }
                 )
+                .exceptionHandling(c -> c.accessDeniedPage("/AccessDenied.html"))
                 .build();
     }
 
+    /**
+     * roleHierarchy - задаёт права пользователей
+     */
     @Bean
     public RoleHierarchy roleHierarchy() {
         RoleHierarchyImpl roleHierarchy = new RoleHierarchyImpl();
@@ -84,9 +85,12 @@ public class SecuritySettings {
         return roleHierarchy;
     }
 
+    /**
+     * users - Создаём менеджер пользователей связанный с нашим JDBC источником данных
+     */
     @Bean
     UserDetailsManager users(DataSource dataSource) {
-        userManager = new JdbcUserDetailsManager(usersDataSource);
+        JdbcUserDetailsManager userManager = new JdbcUserDetailsManager(usersDataSource);
         userManager.setEnableGroups(true);
         return userManager;
     }
